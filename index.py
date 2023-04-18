@@ -30,7 +30,9 @@ import matplotlib.gridspec as gridspec
 #%%
 
 # Read the video file
-video = cv2.VideoCapture('Ritual.2000.JAPANESE.720p.BluRay.H264.AAC-VXT.mp4')
+# mp4, mkv extensions work
+# .MOV not working
+video = cv2.VideoCapture('shorthistoryintro.mp4')
 
 # Get the number of frames in the video
 num_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -38,40 +40,47 @@ num_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
 # Define the downscaled size
 size = (240, 135)
 
-# Initialize an empty list to store the dominant colors
-dominant_colors = []
+def scan_frames(video_file, num_frames, downscale_size, frame_of_interest=int):
+    # Initialize an empty list to store the dominant colors
+    dominant_colors = []
 
-frame_of_interest = ""
+    # Initialize variable frame_selected to be updated during the for loop
+    frame_selected = ""
 
-# Loop through each frame in the video
-for i in tqdm(range(num_frames)):
-    # Read the frame
-    success, frame = video.read()
-    
-    if not success:
-        break
+    for i in tqdm(range(num_frames)):
 
-    # Pick the 1000th frame to be made as graph
-    if i == 1000:
-        frame_of_interest = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Read the frame
+        success, frame = video_file.read()
         
-    # Downscale the frame
-    frame = cv2.resize(frame, size)
+        if not success:
+            break
+
+        # Pick the 1000th frame to be made as graph
+        if i == frame_of_interest:
+            frame_selected = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
+        # Downscale the frame
+        frame = cv2.resize(frame, downscale_size)
+        
+        # Convert the frame to a Pillow Image
+        pil_image = Image.fromarray(frame[...,::-1])
+        
+        # Get the dominant color in the frame
+        pixels = np.float32(pil_image).reshape(-1, 3)
+        n_colors = 1
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 200, .1)
+        flags = cv2.KMEANS_RANDOM_CENTERS
+        _, labels, palette = cv2.kmeans(pixels, n_colors, None, criteria, 10, flags)
+        _, counts = np.unique(labels, return_counts=True)
+        dominant = palette[np.argmax(counts)]
+        
+        # Add the dominant color to the list
+        dominant_colors.append(dominant)
     
-    # Convert the frame to a Pillow Image
-    pil_image = Image.fromarray(frame[...,::-1])
-    
-    # Get the dominant color in the frame
-    pixels = np.float32(pil_image).reshape(-1, 3)
-    n_colors = 1
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 200, .1)
-    flags = cv2.KMEANS_RANDOM_CENTERS
-    _, labels, palette = cv2.kmeans(pixels, n_colors, None, criteria, 10, flags)
-    _, counts = np.unique(labels, return_counts=True)
-    dominant = palette[np.argmax(counts)]
-    
-    # Add the dominant color to the list
-    dominant_colors.append(dominant)
+    return frame_selected, dominant_colors
+
+# Call scan_frames function to start scanning
+frame_of_interest, dominant_colors = scan_frames(video, num_frames, size, 1000)
 
 # Convert the list to a NumPy array
 dominant_colors = np.array(dominant_colors)
