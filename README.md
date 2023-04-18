@@ -9,5 +9,5 @@ Color analysis script written in Python to scan any movie file which is then ana
 Sample outputs can be seen in the `samples` folder of the directory.
 
 ## Acknowledgments
-ChatGPT 3.5 for providing the boilerplate code
+ChatGPT 3.5 for providing the boilerplate code<br>
 My hobby of watching movies for encouraging me to explore this project.
