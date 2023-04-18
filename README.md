@@ -1,5 +1,5 @@
 # Movie Color Analyzer
-Color analysis script written in Python to scan any movie file which is then converted accordingly into a color
+Color analysis script written in Python to scan any movie file which is then analyzed to obtain the five most frequent colors seen in the video file.
 
 ## How the algorithm works
 1. Insert any video file into the directory.
