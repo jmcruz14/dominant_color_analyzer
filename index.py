@@ -32,92 +32,100 @@ import matplotlib.gridspec as gridspec
 # Read the video file
 # mp4, mkv extensions work
 # .MOV not working
-video = cv2.VideoCapture('shorthistoryintro.mp4')
 
-# Get the number of frames in the video
-num_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+def process_vid(video_input):
+	if video_input is not None:
+		# video = cv2.VideoCapture('Green Screen video copy.mp4')
+		print('video-input-data', video_input)
+		video = cv2.VideoCapture(video_input)
 
-# Define the downscaled size
-size = (240, 135)
+		# Get the number of frames in the video
+		num_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
 
-def scan_frames(video_file, num_frames, downscale_size, frame_of_interest=int):
-    # Initialize an empty list to store the dominant colors
-    dominant_colors = []
+		# Define the downscaled size
+		size = (240, 135)
 
-    # Initialize variable frame_selected to be updated during the for loop
-    frame_selected = ""
+		def scan_frames(video_file, num_frames, downscale_size, frame_of_interest=int):
+			# Initialize an empty list to store the dominant colors
+			dominant_colors = []
 
-    for i in tqdm(range(num_frames)):
+			# Initialize variable frame_selected to be updated during the for loop
+			frame_selected = ""
 
-        # Read the frame
-        success, frame = video_file.read()
-        
-        if not success:
-            break
+			for i in tqdm(range(num_frames)):
 
-        # Pick the 1000th frame to be made as graph
-        if i == frame_of_interest:
-            frame_selected = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            
-        # Downscale the frame
-        frame = cv2.resize(frame, downscale_size)
-        
-        # Convert the frame to a Pillow Image
-        pil_image = Image.fromarray(frame[...,::-1])
-        
-        # Get the dominant color in the frame
-        pixels = np.float32(pil_image).reshape(-1, 3)
-        n_colors = 1
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 200, .1)
-        flags = cv2.KMEANS_RANDOM_CENTERS
-        _, labels, palette = cv2.kmeans(pixels, n_colors, None, criteria, 10, flags)
-        _, counts = np.unique(labels, return_counts=True)
-        dominant = palette[np.argmax(counts)]
-        
-        # Add the dominant color to the list
-        dominant_colors.append(dominant)
-    
-    return frame_selected, dominant_colors
+				# Read the frame
+				success, frame = video_file.read()
+				
+				if not success:
+						break
 
-# Call scan_frames function to start scanning
-frame_of_interest, dominant_colors = scan_frames(video, num_frames, size, 1000)
+				# Pick the 1000th frame to be made as graph
+				if i == frame_of_interest:
+						frame_selected = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+						
+				# Downscale the frame
+				frame = cv2.resize(frame, downscale_size)
+				
+				# Convert the frame to a Pillow Image
+				pil_image = Image.fromarray(frame[...,::-1])
+				
+				# Get the dominant color in the frame
+				pixels = np.float32(pil_image).reshape(-1, 3)
+				n_colors = 1
+				criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 200, .1)
+				flags = cv2.KMEANS_RANDOM_CENTERS
+				_, labels, palette = cv2.kmeans(pixels, n_colors, None, criteria, 10, flags)
+				_, counts = np.unique(labels, return_counts=True)
+				dominant = palette[np.argmax(counts)]
+				
+				# Add the dominant color to the list
+				dominant_colors.append(dominant)
+			
+			return frame_selected, dominant_colors
 
-# Convert the list to a NumPy array
-dominant_colors = np.array(dominant_colors)
+		# Call scan_frames function to start scanning
+		frame_of_interest, dominant_colors = scan_frames(video, num_frames, size, 1000)
 
-# Calculate the dominant color for the entire video
-codebook, _ = kmeans(dominant_colors, 5)
+		# Convert the list to a NumPy array
+		dominant_colors = np.array(dominant_colors)
 
-def get_rgb(subarr):
-    return mcolors.to_rgb(subarr/255)
+		# Calculate the dominant color for the entire video
+		codebook, _ = kmeans(dominant_colors, 5)
 
-codebook_standardized = np.apply_along_axis(get_rgb, 1, codebook)
-rgb_colors = [mcolors.to_rgba(color) for color in codebook_standardized]
+		def get_rgb(subarr):
+				return mcolors.to_rgb(subarr/255)
 
-data = np.zeros((1, len(codebook), 4))
-data[0] = rgb_colors
+		codebook_standardized = np.apply_along_axis(get_rgb, 1, codebook)
+		rgb_colors = [mcolors.to_rgba(color) for color in codebook_standardized]
 
-# plot the color swatch and the frame as subplot objects
-fig, (ax1, ax2) = plt.subplots(2, 1)
-gs = gridspec.GridSpec(2,1, height_ratios=[2, 0.5])
+		data = np.zeros((1, len(codebook), 4))
+		data[0] = rgb_colors
 
-# Image frame from the for loop as graph
-ax1.imshow(frame_of_interest, interpolation='nearest', aspect='auto')
-fig.set_figheight(9)
-ax1.axis('off')
+		# plot the color swatch and the frame as subplot objects
+		fig, (ax1, ax2) = plt.subplots(2, 1)
+		gs = gridspec.GridSpec(2,1, height_ratios=[2, 0.5])
 
-# Color Swatch Graph
-ax2.imshow(data, interpolation='nearest', aspect='auto', extent=[ax1.get_xlim()[0], ax1.get_xlim()[1], ax2.get_ylim()[1], ax2.get_ylim()[0]])
-ax2.axis('off')
+		# Image frame from the for loop as graph
+		ax1.imshow(frame_of_interest, interpolation='nearest', aspect='auto')
+		fig.set_figheight(9)
+		ax1.axis('off')
 
-# Reduce whitespace between
-fig.subplots_adjust(hspace=0)
-plt.tight_layout(h_pad=0, w_pad=0)
-plt.show()
+		# Color Swatch Graph
+		ax2.imshow(data, interpolation='nearest', aspect='auto', extent=[ax1.get_xlim()[0], ax1.get_xlim()[1], ax2.get_ylim()[1], ax2.get_ylim()[0]])
+		ax2.axis('off')
 
-# Release heap memory to ensure proper memory management
-video.release()
-cv2.destroyAllWindows()
+		# Reduce whitespace between
+		fig.subplots_adjust(hspace=0)
+		plt.tight_layout(h_pad=0, w_pad=0)
+		# plt.show()
 
-# Output on console in numpy array object and mean distance of all values from centroids
-print(codebook, _)
+		# Release heap memory to ensure proper memory management
+		video.release()
+		cv2.destroyAllWindows()
+
+		# Output on console in numpy array object and mean distance of all values from centroids
+		# print(codebook, _, type(plt))
+
+		return fig
+	
